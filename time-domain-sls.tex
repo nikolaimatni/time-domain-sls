@@ -1,0 +1,177 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx, amsmath,amsthm,amssymb,url}
+\usepackage{empheq}
+
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=black,citecolor=blue,breaklinks]{hyperref}
+\usepackage[labelfont=bf]{subcaption}
+\usepackage[labelfont=bf]{caption}
+\usepackage{algorithm,algcompatible,mathtools}
+\usepackage[multidot]{grffile}
+\usepackage[normalem]{ulem} % just for strikeout
+\usepackage{enumerate}
+\usepackage{thmtools}
+\usepackage{thm-restate}
+
+\usepackage{fullpage,etoolbox}
+\usepackage{color}
+\usepackage[draft]{commands}
+
+\newcommand*\widefbox[1]{\fbox{\hspace{1em}#1\hspace{1em}}}
+\numberwithin{equation}{section}
+\def \basefigwidth{0.4}
+% Fix space breaking
+\relpenalty=9999
+\binoppenalty=9999
+
+
+\title{Working Note: Time-Domain System Level Synthesis}
+\author{Nikolai Matni}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{A time-domain derivation}
+Consider the system
+\begin{equation}
+x_{k+1} = Ax_k + Bu_k + w_k.
+\label{eq:dynamics}
+\end{equation}
+In what follows, we will use $z(t)$ to denote the signal $z$ over time, and $z_k$ to denote its instantaneous value at $t=k$, i.e., $z(t) = (z_0,z_1,\dots)$.  For a matrix $X$, we use $X^j$ to denote its $j$th column; we also sometimes overload notation and use a superscript as a label for a vector, i.e., we will sometimes write $x^j(t)$ to denote a specific instantiation of a generic signal $x$.
+
+Our goal is to characterize the closed loop maps from $w(t) \to x(t)$ and $w(t) \to u(t)$ under the assumption that $u(t) = (K\star x)(t)$ for some LTI controller $K(t)$.  Here $(g\star h)(t)$ denotes the convolution of signals $g(t)$ and $h(t)$.  Specifically, we seek filters $R(t)$ and $M(t)$ such that
+\begin{equation}
+\begin{array}{rcl}
+x(t) &=& (R\star w)(t) \\
+u(t) &=& (M\star w)(t),
+\end{array}
+\label{eq:responses}
+\end{equation}
+under the assumption that $u(t) = (K\star x)(t)$.
+
+First note that for any disturbance signal $w(t)$ we can write $w(t) = \sum_k \sum_j w_{jk}e_j\delta_{k-t}$, and hence by linearity of our dynamics \eqref{eq:dynamics}, it suffices to characterize the impulse responses of the system due to $w^j(t):= e_j \delta_k$.  To that end, we write $x^j(t)$ and $u^j(t)$ to denote the state and control responses due to the $j$th impulse disturbance $w^j(t)$; the dynamics \eqref{eq:dynamics} then simplify to
+\begin{equation}
+R^j_{k+1} = AR^j_k + BM^j_k, \ R^j_1 = e_j,
+\end{equation}
+where we have used the fact that the resulting state and control responses satisfy, by definition,
+\[
+\begin{array}{rclclcl}
+x^j_k &=& \sum_{t=1}^k R_tw^j_{k-t} &=& \sum_{t=1}^k R_te_j \delta_{k-t} &=& R^j_k \\
+u^j_k &=& \sum_{t=1}^k M_tw^j_{k-t} &=& \sum_{t=1}^k M_te_j \delta_{k-t} &=& M^j_k.
+\end{array}
+\]
+
+Therefore, concatenating the respective responses, we have that the responses $R(t)$ and $M(t)$ must satsify
+\begin{equation}
+R_{k+1} = AR_k + BM_k, \ R_1 = I.
+\label{eq:constraints}
+\end{equation}
+
+Our next claim is that since $R(t)$ and $M(t)$ satisfy $R_0 = 0$ and $M_0=0$, the controller can be implemented directly as $u(t) = (M\star w)(t)$ by noting that $u_k$ only depends on $w_1,\dots,w_{k-1}$, and that at time $k$, one can compute $w_{k-1} = x_k = (Ax_{k-1} + Bu_{k-1})$.  It therefore follows from the constraints \eqref{eq:constraints} that the desired state response is also achieved.  To make this explicit, notice that for $w(t) = w^j(t) = e_j \delta_k$ we have from the dynamics \eqref{eq:dynamics} that
+\[
+x^j_1 = e_j = R^j_1.
+\]
+Similarly, we have that
+\[
+x^j_2 = Ax^j_1 + Bu^j_1 = AR^j_1 + BM^j_1 = R^j_2
+\]
+where the final equality follows from the constraints \eqref{eq:constraints}.  This argument is easily extended to any $k\geq 2$ by induction.
+
+Note that this argument is valid over finite or infinite horizons -- note that in the infinite horizon case, additional stability constraints must be imposed on $R(t)$ and $M(t)$ to ensure that the resulting closed loop system is itself stable.
+
+\section{Finite-horizon LQR}
+\subsection{Zero IC, Gaussian Noise}
+Here we consider the finite-horizon LQR problem with zero initial condition, driven by Gaussian noise:
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp R x_k + u_k^\tp Su_k\right] + \E\left[x_{T+1}^\tp Q_F x_{T+1}\right] \\
+\st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = 0,
+\end{array}
+\label{eq:lqr_noise}
+\end{equation}
+for $w_k {\iid}\mathcal{N}(0,I)$ (note that this is wlog assuming a non-degenerate distribution for the process noise).  We now show how this problem can be recast in terms of the system responses $R(t)$ and $M(t)$.  First note that given equations \eqref{eq:responses}, it follows that
+\begin{equation}
+\begin{array}{rcl}
+x_k &=& \sum_{t=1}^k R_t w_{k-t} \\
+u_k &=& \sum_{t=1}^k M_t w_{k-t}.
+\end{array}
+\label{eq:dist}
+\end{equation}
+Exploiting the i.i.d. nature of the disturbance, we can then write
+\begin{equation}
+\begin{array}{rcl}
+\E\left[x_k^\tp Q x_k\right] &=& \sum_{t=1}^k \Tr R_t^\tp Q R_t \\
+\E\left[u_k^\tp S u_k\right] &=& \sum_{t=1}^k \Tr M_t^\tp S M_t \\
+\E\left[x_{T+1}^\tp Q_F x_{T+1}\right] &=& \sum_{t=1}^{T+1} \Tr R_t^\tp Q_F R_t.
+\end{array}
+\label{eq:new_expectations}
+\end{equation}
+Plugging equations \eqref{eq:new_expectations} into the objective function of optimization problem \eqref{eq:lqr_noise}, collecting like terms and optimizing over system responses as opposed to state and input trajectories, we may rewrite the standard LQR problem as
+\begin{equation}
+\begin{array}{rl}
+\min_{R(t),M(t)} & \sum_{\tau=1}^T (T+1-\tau)\left[\Tr R_\tau^\tp Q R_\tau + \Tr M_\tau^\tp S M_\tau\right] + \sum_{s=1}^{T+1} \Tr R_s^\tp Q_F R_s \\
+\st & R_{k+1} = AR_k + BM_k, \ R_1 = I.
+\end{array}
+\end{equation}
+
+\subsection{Nonzero IC, no noise}
+Here we consider the finite-horizon LQR problem with nonzero initial condition and no noise:
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^T \left[x_k^\tp R x_k + u_k^\tp Su_k\right]+ x_{T+1}^\tp Q_F x_{T+1}\\
+\st & x_{k+1} = Ax_k + Bu_k, \ x_0 = \xi.
+\end{array}
+\label{eq:lqr_IC}
+\end{equation}
+In this case, we can define the disturbance signal driving the system to be 
+\begin{equation}
+w(t) := \xi \delta_k = (\xi,0,0,\dots).
+\end{equation}
+It then follows that
+\begin{equation}
+\begin{array}{rclclcl}
+x_k &=& \sum_{t=1}^k R_t w_{k-t} &=& \sum_{t=1}^k R_t \xi \delta_{k-t} &=& R_k \xi \\
+u_k &=& \sum_{t=1}^k M_t w_{k-t} &=& \sum_{t=1}^k M_t \xi \delta_{k-t} &=& M_k \xi,
+\end{array}
+\end{equation}
+meaning that the the LQR problem \eqref{eq:lqr_IC} can be rewritten as
+\begin{equation}
+\begin{array}{rl}
+\min_{R(t),M(t)} & \sum_{k=1}^T\left[\Tr R_k^\tp Q R_k\Xi + \Tr M_k^\tp S M_k\Xi\right] +  \Tr R_{T+1}^\tp Q_F R_{T+1}\Xi \\
+\st & R_{k+1} = AR_k + BM_k, \ R_1 = I,
+\end{array}
+\end{equation}
+where $\Xi := \xi \xi^\tp$.
+
+\subsection{Putting them together}
+We now consider the standard LQR problem with nonzero initial condition and driving process noise
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp R x_k + u_k^\tp Su_k\right]+ \E\left[x_{T+1}^\tp Q_F x_{T+1}\right]\\
+\st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = \xi,
+\end{array}
+\label{eq:lqr_standard}
+\end{equation}
+for $w_k {\iid}\mathcal{N}(0,I)$.  Exploiting linearity and the fact that $\E\left[ w_k\xi^\tp\right] = 0$ for all $k$ we can simply combine the results of the previous subsections, allowing us to rewrite the standard LQR problem \eqref{eq:lqr_standard} as
+\begin{equation}
+\begin{array}{rl}
+\min_{R(t),M(t)} & J_\mathrm{stoch}(R(t),M(t)) + J_\mathrm{det}(R(t),M(t),\Xi) \\
+\st & R_{k+1} = AR_k + BM_k, \ R_1 = I,
+\end{array}
+\label{eq:sls_LQR}
+\end{equation}
+where 
+\begin{equation}
+\begin{array}{rcl}
+J_\mathrm{stoch}(R(t),M(t)) &:=& \sum_{\tau=1}^T (T+1-\tau)\left[\Tr R_\tau^\tp Q R_\tau + \Tr M_\tau^\tp S M_\tau\right] + \sum_{s=1}^{T+1} \Tr R_s^\tp Q_F R_s \\
+J_\mathrm{det}(R(t),M(t),\Xi) &:=& \sum_{k=1}^T\left[\Tr R_k^\tp Q R_k\Xi + \Tr M_k^\tp S M_k\Xi\right] +  \Tr R_{T+1}^\tp Q_F R_{T+1}\Xi.
+\end{array}
+\end{equation}
+
+\end{document}
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
+
