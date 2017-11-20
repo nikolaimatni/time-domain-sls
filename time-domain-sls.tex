@@ -68,7 +68,7 @@ R_{k+1} = AR_k + BM_k, \ R_1 = I.
 \label{eq:constraints}
 \end{equation}
 
-Our next claim is that since $R(t)$ and $M(t)$ satisfy $R_0 = 0$ and $M_0=0$, the controller can be implemented directly as $u(t) = (M\star w)(t)$ by noting that $u_k$ only depends on $w_1,\dots,w_{k-1}$, and that at time $k$, one can compute $w_{k-1} = x_k = (Ax_{k-1} + Bu_{k-1})$.  It therefore follows from the constraints \eqref{eq:constraints} that the desired state response is also achieved.  To make this explicit, notice that for $w(t) = w^j(t) = e_j \delta_k$ we have from the dynamics \eqref{eq:dynamics} that
+Our next claim is that since $R(t)$ and $M(t)$ satisfy $R_0 = 0$ and $M_0=0$, the controller can be implemented directly as $u(t) = (M\star w)(t)$ by noting that $u_k$ only depends on $w_1,\dots,w_{k-1}$, and that at time $k$, one can compute $w_{k-1} = x_k - (Ax_{k-1} + Bu_{k-1})$.  It therefore follows from the constraints \eqref{eq:constraints} that the desired state response is also achieved.  To make this explicit, notice that for $w(t) = w^j(t) = e_j \delta_k$ we have from the dynamics \eqref{eq:dynamics} that
 \[
 x^j_1 = e_j = R^j_1.
 \]
