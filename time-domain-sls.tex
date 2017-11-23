@@ -169,6 +169,77 @@ J_\mathrm{det}(R(t),M(t),\Xi) &:=& \sum_{k=1}^T\left[\Tr R_k^\tp Q R_k\Xi + \Tr 
 \end{array}
 \end{equation}
 
+\section{A redo of the above using block-Toeplitz operators}
+In the following we work with the signals and block-Toeplitz operators, and assume $x_0 = 0$, but allow $w_0 \neq 0$\footnote{This is wlog, as $x_1 = w_0$ can be taken as the nonzero initial condition.}:
+
+\begin{equation}
+\tf x = \begin{bmatrix} x_1 \\ x_2 \\ \vdots \\ x_{T+1} \end{bmatrix} \ \tf u = \begin{bmatrix} u_1 \\ u_2 \\ \vdots \\ u_{T+1} \end{bmatrix} \ \tf w = \begin{bmatrix} w_0 \\ w_1 \\ \vdots \\ w_T\end{bmatrix} \ \tf R = \begin{bmatrix} R_1 & & & \\ R_2 & R_1 & & \\ \vdots & \ddots & \ddots & \\  R_{T+1} & \cdots & R_2 & R_1 \end{bmatrix} \ \tf M = \begin{bmatrix} M_1 & & & \\ M_2 & M_1 & & \\ \vdots & \ddots & \ddots & \\  M_{T+1} & \cdots & M_2 & M_1 \end{bmatrix} \label{eq:definitions}.
+\end{equation}
+
+Further let $Z$ be the block-downshift operator, i.e., a matrix with identity matrices along its first block sub-diagonal and zeros elsewhere.  We can then equivalently write equation \eqref{eq:responses} as
+\begin{equation}
+\begin{array}{rcl}
+\tf x &=& \tf R \tf w \\
+\tf u &=& \tf M \tf w.
+\label{eq:toep_resp}
+\end{array}
+\end{equation}
+
+Following the same reasoning as above, it is straightforward to show that the responses $\{\tf R, \tf M\}$ must satisfy the equation
+\begin{equation}
+\begin{bmatrix} I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I,
+\label{eq:subspace}
+\end{equation}
+where
+\begin{equation}
+\A := \mathrm{blkdiag}\left(A_1,A_2,\dots,A_T\right), \ \B := \mathrm{blkdiag}\left(B_1,B_2,\dots,B_T\right),
+\end{equation}
+
+\begin{theorem}
+For the dynamics \eqref{eq:dynamics} with block-Toeplitz state feedback law $\tf K$ defining the control action as $\tf u = \tf K \tf x$, the following are true
+\begin{enumerate}
+\item the affine subspace defined by \eqref{eq:subspace} parameterizes all possible responses \eqref{eq:toep_resp} of the system.
+\item for any block-Toeplitz matrices $\{\tf R, \tf M\}$ satisfying \eqref{eq:subspace}, the controller $\tf K = \tf M \tf R^{-1}$ achieves the desired response.
+\end{enumerate}
+\label{thm:param}
+\end{theorem}
+\begin{proof}
+First note that we can equivalently write the dynamics \eqref{eq:dynamics} as
+\begin{equation}
+\tf x = Z\A \tf x+ Z\B \tf u + \tf w
+\end{equation}
+Proof of 1.: Let $\tf K$ be any block-Toeplitz operator, and $\tf u = \tf K \tf x$.  Then
+\begin{equation}
+\tf x = Z(\A+\B\tf K)\tf x + \tf w,
+\end{equation}
+which implies that
+\begin{equation}
+\begin{array}{rcl}
+\tf x &=& (I-Z(\A+\B\tf K))^{-1}\tf w \\
+\tf u &=& \tf K(I-Z(\A+\B\tf K))^{-1}\tf w.
+\end{array}
+\end{equation}
+It is then easily seen that
+\begin{equation}
+\begin{bmatrix} I - Z\A \ -Z\B\end{bmatrix}\begin{bmatrix}(I-Z(\A+\B\tf K))^{-1} \\ \tf K (I-Z(\A+\B\tf K))^{-1} \end{bmatrix} = (I - Z\A -Z\B\tf K)(I-Z(\A+\B\tf K))^{-1} = I.
+\end{equation}
+Proof of 2.: Let $\tf K = \tf M \tf R^{-1}$.  Then
+\begin{equation}
+\tf x = (I-Z(\A+\B\tf M \tf R^{-1}))^{-1}\tf w.
+\end{equation}
+But we then have that
+\begin{equation}
+(I-Z(\A+\B\tf M \tf R^{-1}))^{-1} = ((I-Z\A)\tf R - Z\B \tf M)\tf R^{-1})^{-1} = \tf R ((I-Z\A)\tf R - Z\B \tf M)^{-1}  = \tf R
+\end{equation}
+where the last equality follows form the fact that $\{\tf R, \tf M\}$ satisfy \eqref{eq:subspace}.  Similarly we have that
+\begin{equation}
+\tf u = \tf M \tf R^{-1}\tf x = \tf M \tf R^{-1} \tf R \tf w = \tf M \tf w,
+\end{equation}
+where the second equality follows from the fact that $\tf x = \tf R \tf w$.
+\end{proof}
+
+\section{LQR optimal control problems}
+
 \end{document}
 %%% Local Variables:
 %%% mode: latex
