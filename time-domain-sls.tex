@@ -85,7 +85,7 @@ Note that this argument is valid over finite or infinite horizons -- note that i
 Here we consider the finite-horizon LQR problem with zero initial condition, driven by Gaussian noise:
 \begin{equation}
 \begin{array}{rl}
-\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp R x_k + u_k^\tp Su_k\right] + \E\left[x_{T+1}^\tp Q_F x_{T+1}\right] \\
+\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp Q x_k + u_k^\tp Su_k\right] + \E\left[x_{T+1}^\tp Q_F x_{T+1}\right] \\
 \st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = 0,
 \end{array}
 \label{eq:lqr_noise}
@@ -119,7 +119,7 @@ Plugging equations \eqref{eq:new_expectations} into the objective function of op
 Here we consider the finite-horizon LQR problem with nonzero initial condition and no noise:
 \begin{equation}
 \begin{array}{rl}
-\min_{x(t),u(t)} & \sum_{k=1}^T \left[x_k^\tp R x_k + u_k^\tp Su_k\right]+ x_{T+1}^\tp Q_F x_{T+1}\\
+\min_{x(t),u(t)} & \sum_{k=1}^T \left[x_k^\tp Q x_k + u_k^\tp Su_k\right]+ x_{T+1}^\tp Q_F x_{T+1}\\
 \st & x_{k+1} = Ax_k + Bu_k, \ x_0 = \xi.
 \end{array}
 \label{eq:lqr_IC}
@@ -148,7 +148,7 @@ where $\Xi := \xi \xi^\tp$.
 We now consider the standard LQR problem with nonzero initial condition and driving process noise
 \begin{equation}
 \begin{array}{rl}
-\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp R x_k + u_k^\tp Su_k\right]+ \E\left[x_{T+1}^\tp Q_F x_{T+1}\right]\\
+\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp Qx_k + u_k^\tp Su_k\right]+ \E\left[x_{T+1}^\tp Q_F x_{T+1}\right]\\
 \st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = \xi,
 \end{array}
 \label{eq:lqr_standard}
@@ -170,7 +170,7 @@ J_\mathrm{det}(R(t),M(t),\Xi) &:=& \sum_{k=1}^T\left[\Tr R_k^\tp Q R_k\Xi + \Tr 
 \end{equation}
 
 \section{A redo of the above using block-Toeplitz operators}
-In the following we work with the signals and block-Toeplitz operators, and assume $x_0 = 0$, but allow $w_0 \neq 0$\footnote{This is wlog, as $x_1 = w_0$ can be taken as the nonzero initial condition.}:
+In the following we work with the signals and block-Toeplitz lower-triangular operators, and assume $x_0 = 0$, but allow $w_0 \neq 0$\footnote{This is wlog, as $x_1 = w_0$ can be taken as the nonzero initial condition.}:
 
 \begin{equation}
 \tf x = \begin{bmatrix} x_1 \\ x_2 \\ \vdots \\ x_{T+1} \end{bmatrix} \ \tf u = \begin{bmatrix} u_1 \\ u_2 \\ \vdots \\ u_{T+1} \end{bmatrix} \ \tf w = \begin{bmatrix} w_0 \\ w_1 \\ \vdots \\ w_T\end{bmatrix} \ \tf R = \begin{bmatrix} R_1 & & & \\ R_2 & R_1 & & \\ \vdots & \ddots & \ddots & \\  R_{T+1} & \cdots & R_2 & R_1 \end{bmatrix} \ \tf M = \begin{bmatrix} M_1 & & & \\ M_2 & M_1 & & \\ \vdots & \ddots & \ddots & \\  M_{T+1} & \cdots & M_2 & M_1 \end{bmatrix} \label{eq:definitions}.
@@ -196,7 +196,7 @@ where
 \end{equation}
 
 \begin{theorem}
-For the dynamics \eqref{eq:dynamics} with block-Toeplitz state feedback law $\tf K$ defining the control action as $\tf u = \tf K \tf x$, the following are true
+For the dynamics \eqref{eq:dynamics} with block-Toeplitz lower-triangular state feedback law $\tf K$ defining the control action as $\tf u = \tf K \tf x$, the following are true
 \begin{enumerate}
 \item the affine subspace defined by \eqref{eq:subspace} parameterizes all possible responses \eqref{eq:toep_resp} of the system.
 \item for any block-Toeplitz matrices $\{\tf R, \tf M\}$ satisfying \eqref{eq:subspace}, the controller $\tf K = \tf M \tf R^{-1}$ achieves the desired response.
@@ -208,7 +208,7 @@ First note that we can equivalently write the dynamics \eqref{eq:dynamics} as
 \begin{equation}
 \tf x = Z\A \tf x+ Z\B \tf u + \tf w
 \end{equation}
-Proof of 1.: Let $\tf K$ be any block-Toeplitz operator, and $\tf u = \tf K \tf x$.  Then
+Proof of 1.: Let $\tf K$ be any block-Toeplitz lower-triangular operator, and $\tf u = \tf K \tf x$.  Then
 \begin{equation}
 \tf x = Z(\A+\B\tf K)\tf x + \tf w,
 \end{equation}
@@ -238,7 +238,86 @@ where the last equality follows form the fact that $\{\tf R, \tf M\}$ satisfy \e
 where the second equality follows from the fact that $\tf x = \tf R \tf w$.
 \end{proof}
 
+Next we consider a robust variant of the above theorem.  Before stating the result, we let
+\begin{equation}
+\tf \Delta = \begin{bmatrix} \Delta_1 & & & \\ \Delta_2 & \Delta_1 & & \\ \vdots & \ddots & \ddots & \\  \Delta_{T+1} & \cdots & \Delta_2 & \Delta_1 \end{bmatrix}
+\label{eq:delta}
+\end{equation}
+be an arbitrary block-Toeplitz lower-triangular matrix.
+
+\begin{theorem}
+Let $\tf \Delta$ be defined as in equation \eqref{eq:delta}, and suppose that  $\{\tf R, \tf M\}$ satisfy
+\begin{equation}
+\begin{bmatrix}I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I + \tf \Delta.
+\label{eq:robust}
+\end{equation}
+
+If $(I+\Delta_1)^{-1}$ exists, then the controller $\tf K = \tf M \tf R^{-1}$ achieves the system response
+\begin{equation}
+\begin{bmatrix}
+\tf R \\ \tf M \end{bmatrix} (I + \tf \Delta)^{-1}
+\label{eq:robust_response}
+\end{equation}
+\end{theorem}
+\begin{proof}
+If $(I+\Delta_1)^{-1}$ exists, then so does $(I + \tf \Delta)^{-1}$ does too, and therefore the constraint \eqref{eq:robust} is equivalent to
+\begin{equation}
+\begin{bmatrix}I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix}(I + \tf \Delta)^{-1} = I.
+\end{equation}
+
+Then noting that $\tf K = \tf M \tf R^{-1} = \tf M (I + \tf \Delta)^{-1} (\tf R (I + \tf \Delta)^{-1})^{-1} $, we then have, by Theorem \ref{thm:param}, that the controller $\tf K =  \tf M \tf R^{-1} $ achieves the system responses \eqref{eq:robust_response}.
+\end{proof}
+
 \section{LQR optimal control problems}
+Going forward, we assume that $\tf w \iid \mathcal{N}(0,I)$.  For simplicity of notation, we assume that $u_{T+1}$ is included in the cost functional, i.e., that the cost we seek to minimize is
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^{T+1} \E\left[x_k^\tp Q_k x_k + u_k^\tp S_ku_k\right] \\
+\st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = 0.
+\end{array}
+\label{eq:lqr_toep}
+\end{equation}
+
+This problem can be rewritten as
+\begin{equation}
+\begin{array}{rl}
+\min_{\tf R,\tf M} & \bignorm{\begin{bmatrix} \Qq^{\frac{1}{2}} & 0 \\ 0 & \Ss^{\frac{1}{2}}\end{bmatrix}\begin{bmatrix}\tf R \\ \tf M\end{bmatrix}}_F^2 \\
+\st & \begin{bmatrix} I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I,
+\end{array}
+\label{eq:lqr_compact}
+\end{equation}
+where
+\begin{equation}
+\Qq := \mathrm{blkdiag}(Q_1,Q_2, \dots, Q_{T+1}), \ \Ss := \mathrm{blkdiag}(S_1,S_2, \dots, S_{T+1}).
+\end{equation}
+
+\section{A statement of the Learning-LQR result}
+The above conditions/results should look extremely similar to what we have seen in the infinite horizon setting.  Letting $\Ahh = \A + \DA$ and $\Bhh = \B + \DB$, with the assumption that $\|\DA\| \leq \epsilon_A$ and $\|\DB\|\leq \epsilon_B$, we can step through the same proof procedure as that in the infinite horizon setting, replacing $\hinf$ norms with operator norms, and $\mathcal{H}_2$ norms with Frobenius norms, to obtain an analogous result.  
+
+We define the finite-time resolvent $\Res{\tf M}$ of an operator $\tf M$ to be
+\begin{equation}
+\Res{\tf M} := (I - Z\tf M)^{-1},
+\end{equation}
+and let 
+\begin{equation}
+\tf \Delta := - Z(\DA + \DB \tf K_\star)\Res{\A + \B\tf K_\star},
+\end{equation}
+for $\tf K_\star$ the optimal LQR controller.  Further let 
+\begin{equation}
+\zeta := (\epsilon_A + \epsilon_B \| \tf K_\star\|)\Res{\A + \B\tf K_\star}.
+\end{equation}
+Then, if $\zeta \leq \frac{1}{5}$, the controller $\tf K=\tf M \tf R^{-1}$ computed by solving the optimization problem
+\begin{equation}
+\begin{array}{rl}
+\min_{\gamma \in [0,1)} \frac{1}{1-\gamma} \min_{\tf R, \tf M} & \bignorm{\begin{bmatrix} \Qq^{\frac{1}{2}} & 0 \\ 0 & \Ss^{\frac{1}{2}}\end{bmatrix}\begin{bmatrix}\tf R \\ \tf M\end{bmatrix}}_F \\
+\st & \begin{bmatrix} I - Z\Ahh & -Z\Bhh \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I, \ \sqrt{2}\bignorm{\begin{matrix} \epsilon_A\tf R \\ \epsilon_B\tf M\end{matrix}} \leq \gamma
+\end{array}
+\end{equation}
+achieves the relative performance bound
+\begin{equation}
+\frac{J(\A,\B,\tf K) - J_\star}{J_\star} \leq 5 \zeta,
+\end{equation}
+where $J_\star$ is the optimal performance achievable if $\A$ and $\B$ are known.
 
 \end{document}
 %%% Local Variables:
