@@ -1,0 +1,411 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx, amsmath,amsthm,amssymb,url}
+\usepackage{empheq}
+
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=black,citecolor=blue,breaklinks]{hyperref}
+\usepackage[labelfont=bf]{subcaption}
+\usepackage[labelfont=bf]{caption}
+\usepackage{algorithm,algcompatible,mathtools}
+\usepackage[multidot]{grffile}
+\usepackage[normalem]{ulem} % just for strikeout
+\usepackage{enumerate}
+\usepackage{thmtools}
+\usepackage{thm-restate}
+
+\usepackage{fullpage,etoolbox}
+\usepackage{color}
+\usepackage[draft]{commands}
+
+\newcommand*\widefbox[1]{\fbox{\hspace{1em}#1\hspace{1em}}}
+\numberwithin{equation}{section}
+\def \basefigwidth{0.4}
+% Fix space breaking
+\relpenalty=9999
+\binoppenalty=9999
+
+
+\title{Working Note: Time-Domain System Level Synthesis and MPC}
+\author{Nikolai Matni}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{A time-domain derivation in terms of truncated Toeplitz operators}
+Consider the system
+\begin{equation}
+x_{k+1} = Ax_k + Bu_k + w_k.
+\label{eq:dynamics}
+\end{equation}
+In what follows, we will use $z(t)$ to denote the signal $z$ over time, and $z_k$ to denote its instantaneous value at $t=k$, i.e., $z(t) = (z_0,z_1,\dots)$.  For a matrix $X$, we use $X^j$ to denote its $j$th column; we also sometimes overload notation and use a superscript as a label for a vector, i.e., we will sometimes write $x^j(t)$ to denote a specific instantiation of a generic signal $x$.
+
+Our goal is to characterize the closed loop maps from $w(t) \to x(t)$ and $w(t) \to u(t)$ under the assumption that $u(t) = (K\star x)(t)$ for some LTI controller $K(t)$.  Here $(g\star h)(t)$ denotes the convolution of signals $g(t)$ and $h(t)$.  Specifically, we seek filters $R(t)$ and $M(t)$ such that
+\begin{equation}
+\begin{array}{rcl}
+x(t) &=& (R\star w)(t) \\
+u(t) &=& (M\star w)(t),
+\end{array}
+\label{eq:responses}
+\end{equation}
+under the assumption that $u(t) = (K\star x)(t)$.
+
+First note that for any disturbance signal $w(t)$ we can write $w(t) = \sum_k \sum_j w_{jk}e_j\delta_{k-t}$, and hence by linearity of our dynamics \eqref{eq:dynamics}, it suffices to characterize the impulse responses of the system due to $w^j(t):= e_j \delta_k$.  To that end, we write $x^j(t)$ and $u^j(t)$ to denote the state and control responses due to the $j$th impulse disturbance $w^j(t)$; the dynamics \eqref{eq:dynamics} then simplify to
+\begin{equation}
+R^j_{k+1} = AR^j_k + BM^j_k, \ R^j_1 = e_j,
+\end{equation}
+where we have used the fact that the resulting state and control responses satisfy, by definition,
+\[
+\begin{array}{rclclcl}
+x^j_k &=& \sum_{t=1}^k R_tw^j_{k-t} &=& \sum_{t=1}^k R_te_j \delta_{k-t} &=& R^j_k \\
+u^j_k &=& \sum_{t=1}^k M_tw^j_{k-t} &=& \sum_{t=1}^k M_te_j \delta_{k-t} &=& M^j_k.
+\end{array}
+\]
+
+Therefore, concatenating the respective responses, we have that the responses $R(t)$ and $M(t)$ must satsify
+\begin{equation}
+R_{k+1} = AR_k + BM_k, \ R_1 = I.
+\label{eq:constraints}
+\end{equation}
+
+Our next claim is that since $R(t)$ and $M(t)$ satisfy $R_0 = 0$ and $M_0=0$, the controller can be implemented directly as $u(t) = (M\star w)(t)$ by noting that $u_k$ only depends on $w_1,\dots,w_{k-1}$, and that at time $k$, one can compute $w_{k-1} = x_k - (Ax_{k-1} + Bu_{k-1})$.  It therefore follows from the constraints \eqref{eq:constraints} that the desired state response is also achieved.  To make this explicit, notice that for $w(t) = w^j(t) = e_j \delta_k$ we have from the dynamics \eqref{eq:dynamics} that
+\[
+x^j_1 = e_j = R^j_1.
+\]
+Similarly, we have that
+\[
+x^j_2 = Ax^j_1 + Bu^j_1 = AR^j_1 + BM^j_1 = R^j_2
+\]
+where the final equality follows from the constraints \eqref{eq:constraints}.  This argument is easily extended to any $k\geq 2$ by induction.
+
+Note that this argument is valid over finite or infinite horizons -- note that in the infinite horizon case, additional stability constraints must be imposed on $R(t)$ and $M(t)$ to ensure that the resulting closed loop system is itself stable.
+
+\section{Finite-horizon LQR}
+\subsection{Zero IC, Gaussian Noise}
+Here we consider the finite-horizon LQR problem with zero initial condition, driven by Gaussian noise:
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp Q x_k + u_k^\tp Su_k\right] + \E\left[x_{T+1}^\tp Q_F x_{T+1}\right] \\
+\st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = 0,
+\end{array}
+\label{eq:lqr_noise}
+\end{equation}
+for $w_k {\iid}\mathcal{N}(0,I)$ (note that this is wlog assuming a non-degenerate distribution for the process noise).  We now show how this problem can be recast in terms of the system responses $R(t)$ and $M(t)$.  First note that given equations \eqref{eq:responses}, it follows that
+\begin{equation}
+\begin{array}{rcl}
+x_k &=& \sum_{t=1}^k R_t w_{k-t} \\
+u_k &=& \sum_{t=1}^k M_t w_{k-t}.
+\end{array}
+\label{eq:dist}
+\end{equation}
+Exploiting the i.i.d. nature of the disturbance, we can then write
+\begin{equation}
+\begin{array}{rcl}
+\E\left[x_k^\tp Q x_k\right] &=& \sum_{t=1}^k \Tr R_t^\tp Q R_t \\
+\E\left[u_k^\tp S u_k\right] &=& \sum_{t=1}^k \Tr M_t^\tp S M_t \\
+\E\left[x_{T+1}^\tp Q_F x_{T+1}\right] &=& \sum_{t=1}^{T+1} \Tr R_t^\tp Q_F R_t.
+\end{array}
+\label{eq:new_expectations}
+\end{equation}
+Plugging equations \eqref{eq:new_expectations} into the objective function of optimization problem \eqref{eq:lqr_noise}, collecting like terms and optimizing over system responses as opposed to state and input trajectories, we may rewrite the standard LQR problem as
+\begin{equation}
+\begin{array}{rl}
+\min_{R(t),M(t)} & \sum_{\tau=1}^T (T+1-\tau)\left[\Tr R_\tau^\tp Q R_\tau + \Tr M_\tau^\tp S M_\tau\right] + \sum_{s=1}^{T+1} \Tr R_s^\tp Q_F R_s \\
+\st & R_{k+1} = AR_k + BM_k, \ R_1 = I.
+\end{array}
+\end{equation}
+
+\subsection{Nonzero IC, no noise}
+Here we consider the finite-horizon LQR problem with nonzero initial condition and no noise:
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^T \left[x_k^\tp Q x_k + u_k^\tp Su_k\right]+ x_{T+1}^\tp Q_F x_{T+1}\\
+\st & x_{k+1} = Ax_k + Bu_k, \ x_0 = \xi.
+\end{array}
+\label{eq:lqr_IC}
+\end{equation}
+In this case, we can define the disturbance signal driving the system to be 
+\begin{equation}
+w(t) := \xi \delta_k = (\xi,0,0,\dots).
+\end{equation}
+It then follows that
+\begin{equation}
+\begin{array}{rclclcl}
+x_k &=& \sum_{t=1}^k R_t w_{k-t} &=& \sum_{t=1}^k R_t \xi \delta_{k-t} &=& R_k \xi \\
+u_k &=& \sum_{t=1}^k M_t w_{k-t} &=& \sum_{t=1}^k M_t \xi \delta_{k-t} &=& M_k \xi,
+\end{array}
+\end{equation}
+meaning that the the LQR problem \eqref{eq:lqr_IC} can be rewritten as
+\begin{equation}
+\begin{array}{rl}
+\min_{R(t),M(t)} & \sum_{k=1}^T\left[\Tr R_k^\tp Q R_k\Xi + \Tr M_k^\tp S M_k\Xi\right] +  \Tr R_{T+1}^\tp Q_F R_{T+1}\Xi \\
+\st & R_{k+1} = AR_k + BM_k, \ R_1 = I,
+\end{array}
+\end{equation}
+where $\Xi := \xi \xi^\tp$.
+
+\subsection{Putting them together}
+We now consider the standard LQR problem with nonzero initial condition and driving process noise
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=1}^T \E\left[x_k^\tp Qx_k + u_k^\tp Su_k\right]+ \E\left[x_{T+1}^\tp Q_F x_{T+1}\right]\\
+\st & x_{k+1} = Ax_k + Bu_k + w_k, \ x_0 = \xi,
+\end{array}
+\label{eq:lqr_standard}
+\end{equation}
+for $w_k {\iid}\mathcal{N}(0,I)$.  Exploiting linearity and the fact that $\E\left[ w_k\xi^\tp\right] = 0$ for all $k$ we can simply combine the results of the previous subsections, allowing us to rewrite the standard LQR problem \eqref{eq:lqr_standard} as
+\begin{equation}
+\begin{array}{rl}
+\min_{R(t),M(t)} & J_\mathrm{stoch}(R(t),M(t)) + J_\mathrm{det}(R(t),M(t),\Xi) \\
+\st & R_{k+1} = AR_k + BM_k, \ R_1 = I,
+\end{array}
+\label{eq:sls_LQR}
+\end{equation}
+where 
+\begin{equation}
+\begin{array}{rcl}
+J_\mathrm{stoch}(R(t),M(t)) &:=& \sum_{\tau=1}^T (T+1-\tau)\left[\Tr R_\tau^\tp Q R_\tau + \Tr M_\tau^\tp S M_\tau\right] + \sum_{s=1}^{T+1} \Tr R_s^\tp Q_F R_s \\
+J_\mathrm{det}(R(t),M(t),\Xi) &:=& \sum_{k=1}^T\left[\Tr R_k^\tp Q R_k\Xi + \Tr M_k^\tp S M_k\Xi\right] +  \Tr R_{T+1}^\tp Q_F R_{T+1}\Xi.
+\end{array}
+\end{equation}
+
+\textbf{This will be the form we will want to use for studying the MPC problem (modulo the addition of a $\Delta$ term to capture model error) -- below I show how to more compactly write the objective function in terms of block-Toeplitz operators that are more amenable to analysis, but not necessarily computation.}
+
+\section{A redo of the above using block-Toeplitz operators}
+In the following we work with the signals and block-Toeplitz lower-triangular operators defined below:
+
+\begin{equation}
+\tf x = \begin{bmatrix} x_0 \\ x_1 \\ \vdots \\ x_{T} \end{bmatrix} \ \tf u = \begin{bmatrix} u_0 \\ u_1 \\ \vdots \\ u_{T} \end{bmatrix} \ \tf w = \begin{bmatrix} w_{-1} \\ w_0 \\ \vdots \\ w_{T-1}\end{bmatrix} \ \tf R = \begin{bmatrix} R_1 & & & \\ R_2 & R_1 & & \\ \vdots & \ddots & \ddots & \\  R_{T} & \cdots & R_2 & R_1 \end{bmatrix} \ \tf M = \begin{bmatrix} M_1 & & & \\ M_2 & M_1 & & \\ \vdots & \ddots & \ddots & \\  M_{T} & \cdots & M_2 & M_1 \end{bmatrix} \label{eq:definitions}.
+\end{equation}
+
+Note that the disturbance signal $\tf w$ begins at $k=-1$, whereas the remaining signals begin at $k=0$ -- this allows us to write the strictly proper operators $\tf R$ and $\tf M$ as lower-block-triangular, as opposed to strictly lower-block-triangular, matrices.  This will be more convenient.  Further, if $x_0$ is known to be equal to some value $\xi$, this can be encoded in the above framework by making $w_{-1}$ have mean $\xi$ and covariance $0$.
+
+Now let $Z$ be the block-downshift operator, i.e., a matrix with identity matrices along its first block sub-diagonal and zeros elsewhere.  We can then equivalently write equation \eqref{eq:responses} as
+\begin{equation}
+\begin{array}{rcl}
+\tf x &=& \tf R \tf w \\
+\tf u &=& \tf M \tf w.
+\label{eq:toep_resp}
+\end{array}
+\end{equation}
+
+Following the same reasoning as above, it is straightforward to show that the responses $\{\tf R, \tf M\}$ must satisfy the equation
+\begin{equation}
+\begin{bmatrix} I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I,
+\label{eq:subspace}
+\end{equation}
+where
+\begin{equation}
+\A := \mathrm{blkdiag}\left(A_1,A_2,\dots,A_T\right), \ \B := \mathrm{blkdiag}\left(B_1,B_2,\dots,B_T\right),
+\end{equation}
+
+\begin{remark}
+Notice that time-varying dynamics are now trivial to incorporate into this framework.
+\end{remark}
+
+\begin{theorem}
+For the dynamics \eqref{eq:dynamics} with block-Toeplitz lower-triangular state feedback law $\tf K$ defining the control action as $\tf u = \tf K \tf x$, the following are true
+\begin{enumerate}
+\item the affine subspace defined by \eqref{eq:subspace} parameterizes all possible responses \eqref{eq:toep_resp} of the system.
+\item for any block-Toeplitz matrices $\{\tf R, \tf M\}$ satisfying \eqref{eq:subspace}, the controller $\tf K = \tf M \tf R^{-1}$ achieves the desired response.
+\end{enumerate}
+\label{thm:robust_param}
+\end{theorem}
+\begin{proof}
+First note that we can equivalently write the dynamics \eqref{eq:dynamics} as
+\begin{equation}
+\tf x = Z\A \tf x+ Z\B \tf u + \tf w
+\end{equation}
+Proof of 1.: Let $\tf K$ be any block-Toeplitz lower-triangular operator, and $\tf u = \tf K \tf x$.  Then
+\begin{equation}
+\tf x = Z(\A+\B\tf K)\tf x + \tf w,
+\end{equation}
+which implies that
+\begin{equation}
+\begin{array}{rcl}
+\tf x &=& (I-Z(\A+\B\tf K))^{-1}\tf w \\
+\tf u &=& \tf K(I-Z(\A+\B\tf K))^{-1}\tf w.
+\end{array}
+\end{equation}
+It is then easily seen that
+\begin{equation}
+\begin{bmatrix} I - Z\A \ -Z\B\end{bmatrix}\begin{bmatrix}(I-Z(\A+\B\tf K))^{-1} \\ \tf K (I-Z(\A+\B\tf K))^{-1} \end{bmatrix} = (I - Z\A -Z\B\tf K)(I-Z(\A+\B\tf K))^{-1} = I.
+\end{equation}
+Proof of 2.: Let $\tf K = \tf M \tf R^{-1}$.  Then
+\begin{equation}
+\tf x = (I-Z(\A+\B\tf M \tf R^{-1}))^{-1}\tf w.
+\end{equation}
+But we then have that
+\begin{equation}
+(I-Z(\A+\B\tf M \tf R^{-1}))^{-1} = ((I-Z\A)\tf R - Z\B \tf M)\tf R^{-1})^{-1} = \tf R ((I-Z\A)\tf R - Z\B \tf M)^{-1}  = \tf R
+\end{equation}
+where the last equality follows form the fact that $\{\tf R, \tf M\}$ satisfy \eqref{eq:subspace}.  Similarly we have that
+\begin{equation}
+\tf u = \tf M \tf R^{-1}\tf x = \tf M \tf R^{-1} \tf R \tf w = \tf M \tf w,
+\end{equation}
+where the second equality follows from the fact that $\tf x = \tf R \tf w$.
+\end{proof}
+
+Next we consider a robust variant of the above theorem.  Before stating the result, we let
+\begin{equation}
+\tf \Delta = \begin{bmatrix} \Delta_1 & & & \\ \Delta_2 & \Delta_1 & & \\ \vdots & \ddots & \ddots & \\  \Delta_{T+1} & \cdots & \Delta_2 & \Delta_1 \end{bmatrix}
+\label{eq:delta}
+\end{equation}
+be an arbitrary block-Toeplitz lower-triangular matrix.
+
+\begin{theorem}
+Let $\tf \Delta$ be defined as in equation \eqref{eq:delta}, and suppose that  $\{\tf R, \tf M\}$ satisfy
+\begin{equation}
+\begin{bmatrix}I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I + \tf \Delta.
+\label{eq:robust}
+\end{equation}
+
+If $(I+\Delta_1)^{-1}$ exists, then the controller $\tf K = \tf M \tf R^{-1}$ achieves the system response
+\begin{equation}
+\begin{bmatrix}
+\tf R \\ \tf M \end{bmatrix} (I + \tf \Delta)^{-1}
+\label{eq:robust_response}
+\end{equation}
+\end{theorem}
+\begin{proof}
+If $(I+\Delta_1)^{-1}$ exists, then so does $(I + \tf \Delta)^{-1}$, and therefore the constraint \eqref{eq:robust} is equivalent to
+\begin{equation}
+\begin{bmatrix}I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix}(I + \tf \Delta)^{-1} = I.
+\end{equation}
+
+Then noting that $\tf K = \tf M \tf R^{-1} = \tf M (I + \tf \Delta)^{-1} (\tf R (I + \tf \Delta)^{-1})^{-1} $, we then have, by Theorem \ref{thm:robust_param}, that the controller $\tf K =  \tf M \tf R^{-1} $ achieves the system responses \eqref{eq:robust_response}.
+\end{proof}
+
+\section{LQR optimal control problems}
+Going forward, we assume that $\tf w \iid \mathcal{N}(0,I)$.\footnote{If $x_0 = \xi$ is known, then a similar decomposition technique as done above can be used to split the cost into a stochastic and deterministic component by exploiting independence between $x_0 = w_{-1}$ and the rest of the disturbance signal.} 
+
+Without loss of generality, we assume that $u_{T}$ is included in the cost functional, i.e., that the cost we seek to minimize is
+\begin{equation}
+\begin{array}{rl}
+\min_{x(t),u(t)} & \sum_{k=0}^{T} \E\left[x_k^\tp Q_k x_k + u_k^\tp S_ku_k\right] \\
+\st & x_{k+1} = Ax_k + Bu_k + w_k.
+\end{array}
+\label{eq:lqr_toep}
+\end{equation}
+
+This problem can be rewritten as
+\begin{equation}
+\begin{array}{rl}
+\min_{\tf R,\tf M} & \bignorm{\begin{bmatrix} \Qq^{\frac{1}{2}} & 0 \\ 0 & \Ss^{\frac{1}{2}}\end{bmatrix}\begin{bmatrix}\tf R \\ \tf M\end{bmatrix}}_F^2 \\
+\st & \begin{bmatrix} I - Z\A & -Z\B \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I,
+\end{array}
+\label{eq:lqr_compact}
+\end{equation}
+where
+\begin{equation}
+\Qq := \mathrm{blkdiag}(Q_1,Q_2, \dots, Q_{T}), \ \Ss := \mathrm{blkdiag}(S_1,S_2, \dots, S_{T}).
+\end{equation}
+
+\section{A Robust LQR result}
+The above conditions/results should look extremely similar to what we have seen in the infinite horizon setting.  Let $\Ahh = \A + \DA$ and $\Bhh = \B + \DB$, with the assumption that $\|\DA\| \leq \epsilon_A$ and $\|\DB\|\leq \epsilon_B$.  We then have the following robust performance result (note that since we are working in finite-time, there is no concern for stability):
+
+\begin{lemma}
+Let $\Ahh,\Bhh,\DA,\DB$ be defined as above, and let
+\begin{equation}
+\Dh := Z \begin{bmatrix} \DA & \DB \end{bmatrix} \begin{bmatrix} \Rh \\ \Mh \end{bmatrix}.
+\end{equation}
+Then if $\Rh,\Mh$ satisfy 
+\begin{equation}
+\begin{bmatrix} I - Z\Ahh & -Z\Bhh \end{bmatrix}\begin{bmatrix} \tf \Rh \\ \tf \Mh \end{bmatrix} = I,
+\end{equation}
+the controller $\Kh = \Mh\Rh^{-1}$ achieves the following performance on the true system $(\A,\B)$:
+\begin{equation}
+ \bignorm{\begin{bmatrix} \Qq^{\frac{1}{2}} & 0 \\ 0 & \Ss^{\frac{1}{2}}\end{bmatrix}\begin{bmatrix}\tf \Rh \\ \tf \Mh\end{bmatrix}g(\Dh)}_F^2,
+ \label{eq:robust_cost}
+ \end{equation}
+ where 
+\begin{equation}
+g(\Dh) := (I + \Dh)^{-1} = \sum_{t=0}^{T-1} \Dh^t.
+\end{equation}
+\label{lem:robust_stab}
+\end{lemma}
+\begin{proof}
+This follows immediately from Theorem \ref{thm:robust_param} and by noting that $\Dh$ is strictly block-lower-triangular, and hence nilpotent.
+\end{proof}
+
+Lemma \ref{lem:robust_stab} then immediately suggests the following robust synthesis procedure, which is convex for any fixed $\gamma>0$:
+\begin{equation}
+\begin{array}{rl}
+\min_{\gamma>0}  \min_{\tf R, \tf M,\tau>0} &\gamma^2 \bignorm{\begin{bmatrix} \Qq^{\frac{1}{2}} & 0 \\ 0 & \Ss^{\frac{1}{2}}\end{bmatrix}\begin{bmatrix}\tf R \\ \tf M\end{bmatrix}}_F^2 \\
+\st & \begin{bmatrix} I - Z\Ahh & -Z\Bhh \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I, \ \sqrt{2}\bignorm{\begin{matrix} \epsilon_A\tf R \\ \epsilon_B\tf M\end{matrix}} \leq \tau, \ \sum_{t=0}^T \tau^t \leq \gamma
+\end{array}
+\end{equation}
+where we have obtained an upper-bound to the cost \eqref{eq:robust_cost} by applying the sub-multiplicative property, the triangle inequality and the trick to upper-bound the spectral-norm of $\Dh$.
+
+With this in hand, we can now step through the same proof procedure as the learning LQR paper to get a relative performance bound for this controller in terms of the error sizes $\epsilon_A$ and $\epsilon_B$.  In particular, if we let
+\begin{equation}
+\zeta := (\epsilon_A + \epsilon_B \|\trueK\|)\|\Res{\A + \B\trueK}\|,
+\end{equation}
+where we define the finite-time resolvent $\Res{\tf M}$ of an operator $\tf M$ to be
+\begin{equation}
+\Res{\tf M} := (I - Z\tf M)^{-1},
+\end{equation}
+then we can bound the relative performance achieved by\footnote{Note the costs here are the squared Frobenius norms, so the actual LQR costs, not their square roots.}
+\begin{equation}
+\frac{J(\A,\B,\Kh) - J_\star}{J_\star} \leq \left[\frac{(1-\gamma_0^T)(1-\zeta)}{(1-\gamma^0)(1-\zeta)}\right]^2,
+\end{equation}
+where $\zeta$ is as defined above, and 
+\begin{equation}
+\gamma_0 := \frac{\sqrt{2}\zeta(1-\zeta^T)}{1-\zeta}.
+\end{equation}
+
+Note that we have used the relation
+\begin{equation}
+\sum_{t=0}^{T-1} r^t = \frac{1-r^T}{1-r}
+\end{equation}
+repeatedly in the above.
+
+\section{Extending this to Analyzing MPC}
+So what we have above is essentially a sub-routine for MPC that could be called at each update.  So here is what I would suggest considering as a first problem to analyze:  pick the baseline to be a standard LQR MPC problem with a terminal state-cost specified by the solution to the Riccati equation.  This ensures that MPC behaves exactly like an optimal infinite horizon LQR controller.  This then opens up some interesting questions:
+\begin{itemize}
+\item How small do $\epsilon_A$ and $\epsilon_B$ have to be to ensure that an MPC scheme implemented using the above robust controller is stable?
+\item Can we quantify the end-to-end performance loss in the MPC scheme?
+\item Can we suitably pick a terminal cost (or equivalently add constraints to our robust synthesis problem) such that the end-to-end performance loss in the MPC scheme is the same as that in the infinite horizon setting we have already considered?
+\end{itemize}
+
+The last question is a bit of a flyer, but given that for known $(A,B)$ we know how to pick a terminal cost to get optimal infinite horizon performance, I think it's an interesting question to investigate.
+
+Once asymptotic stability is established, the next interesting question I think is considering robust satisfaction of state/input constraints over one iteration, i.e., take the robust problem I analyzed above, and ask that $\tf x \in \mathcal{X}$ and $\tf u \in \mathcal{U}$.  What is the appropriate notion of a robust-invariant set in this setting where we have this funny $(I+\Dh)^{-1}$ term modulating our disturbance signal.  I have some ideas on this, but they are all quite primitive.
+
+Once the robust feasibility of one iteration is guaranteed, the next task will be to prove recursive feasibility: I suspect that if we get these robust-invariant sets right in the previous step, then this should be pretty straightforward.
+
+I think that with these three pieces, stability, feasibility and recursive feasibility, we have most (all?) of the tools needed to analyze Ugo's algorithm.
+
+%
+%
+%We define the finite-time resolvent $\Res{\tf M}$ of an operator $\tf M$ to be
+%\begin{equation}
+%\Res{\tf M} := (I - Z\tf M)^{-1},
+%\end{equation}
+%and let 
+%\begin{equation}
+%\tf \Delta := - Z(\DA + \DB \tf K_\star)\Res{\A + \B\tf K_\star},
+%\end{equation}
+%for $\tf K_\star$ the optimal LQR controller.  Further let 
+%\begin{equation}
+%\zeta := (\epsilon_A + \epsilon_B \| \tf K_\star\|)\Res{\A + \B\tf K_\star}.
+%\end{equation}
+%Then, if $\zeta \leq \frac{1}{5}$, the controller $\tf K=\tf M \tf R^{-1}$ computed by solving the optimization problem
+%\begin{equation}
+%\begin{array}{rl}
+%\min_{\gamma \in [0,1)} \frac{1}{1-\gamma} \min_{\tf R, \tf M} & \bignorm{\begin{bmatrix} \Qq^{\frac{1}{2}} & 0 \\ 0 & \Ss^{\frac{1}{2}}\end{bmatrix}\begin{bmatrix}\tf R \\ \tf M\end{bmatrix}}_F \\
+%\st & \begin{bmatrix} I - Z\Ahh & -Z\Bhh \end{bmatrix}\begin{bmatrix} \tf R \\ \tf M \end{bmatrix} = I, \ \sqrt{2}\bignorm{\begin{matrix} \epsilon_A\tf R \\ \epsilon_B\tf M\end{matrix}} \leq \gamma
+%\end{array}
+%\end{equation}
+%achieves the relative performance bound
+%\begin{equation}
+%\frac{J(\A,\B,\tf K) - J_\star}{J_\star} \leq 5 \zeta,
+%\end{equation}
+%where $J_\star$ is the optimal performance achievable if $\A$ and $\B$ are known.
+%
+\end{document}
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
+

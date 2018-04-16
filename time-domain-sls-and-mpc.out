@@ -1,0 +1,9 @@
+\BOOKMARK [1][-]{section.1}{A time-domain derivation in terms of truncated Toeplitz operators}{}% 1
+\BOOKMARK [1][-]{section.2}{Finite-horizon LQR}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Zero IC, Gaussian Noise}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Nonzero IC, no noise}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{Putting them together}{section.2}% 5
+\BOOKMARK [1][-]{section.3}{A redo of the above using block-Toeplitz operators}{}% 6
+\BOOKMARK [1][-]{section.4}{LQR optimal control problems}{}% 7
+\BOOKMARK [1][-]{section.5}{A Robust LQR result}{}% 8
+\BOOKMARK [1][-]{section.6}{Extending this to Analyzing MPC}{}% 9
